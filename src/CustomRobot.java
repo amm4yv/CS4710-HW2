@@ -7,13 +7,6 @@ import world.World;
 
 public class CustomRobot extends Robot {
 
-	// // ping returns O, X, F or S
-	// super.pingMap(new Point(5, 3));
-	//
-	// // if return from move == super.getPosition(), robot didn't move
-	//
-	// super.move(new Point(3, 7));
-
 	private World world;
 	Point[][] adjMatrix;
 	ArrayList<Node> openList;
@@ -30,8 +23,6 @@ public class CustomRobot extends Robot {
 		this.end = new Node(null, world.getEndPos());
 
 		openList.add(start);
-
-		// System.out.println(start.point);
 
 	}
 
