@@ -11,13 +11,18 @@ public class CustomRobot extends Robot {
 	Point[][] adjMatrix;
 	ArrayList<Node> openList;
 	ArrayList<Node> closedList;
+	ArrayList<Node> unmovableList;
 	Node start;
 	Node end;
+	boolean uncertainty;
 
-	public CustomRobot(World world) {
+	public CustomRobot(World world, boolean uncertainty) {
 		this.world = world;
+		this.uncertainty = uncertainty;
+
 		this.openList = new ArrayList<Node>();
 		this.closedList = new ArrayList<Node>();
+		this.unmovableList = new ArrayList<Node>();
 
 		this.start = new Node(null, world.getStartPos());
 		this.end = new Node(null, world.getEndPos());
@@ -29,6 +34,11 @@ public class CustomRobot extends Robot {
 	@Override
 	public void travelToDestination() {
 
+		// if (uncertainty) {
+		// move(this.end);
+		// }
+
+		// else {
 		Stack<Point> path = getPath();
 
 		if (path != null) {
@@ -37,43 +47,67 @@ public class CustomRobot extends Robot {
 				super.move(path.pop());
 			}
 		}
-
+		// }
 	}
 
 	public Stack<Point> getPath() {
 
 		while (!openList.isEmpty()) {
 
+			System.out.println("Open: \t\t" + openList);
+			// System.out.println("Closed: \t" + closedList);
+
+			// System.out.println("No: " + unmovableList);
+
 			// Find minimum cost node
 			double minCost = Double.MAX_VALUE;
 			Node minCostNode = end;
 
-			for (Node n : openList) {
-				double temp = getGivenCost(n) + getHeuristicCost(n);
-				if (temp < minCost) {
-					minCost = temp;
-					minCostNode = n;
+			if (openList.size() > 1) {
+				for (Node n : openList) {
+					double temp = getGivenCost(n) + getHeuristicCost(n);
+					System.out.println(n + ": " + temp);
+					if (!n.point.equals(start.point)
+							&& !n.point.equals(super.getPosition())
+							&& temp <= minCost) {
+						minCost = temp;
+						minCostNode = n;
+					}
 				}
+			} else {
+				minCostNode = openList.get(0);
 			}
 
 			// Reached end point, so get path taken
 			if (minCostNode.point.equals(end.point))
 				return reconstructPath(minCostNode);
 
-			// Otherwise, going to keep looking
 			openList.remove(minCostNode);
 			closedList.add(minCostNode);
 
+			Point currentSpot = super.getPosition();
+			System.out.println("Pos: " + currentSpot);
+			System.out.println("Min: " + minCostNode);
+
+			// We are trying to go along this path, so need to move the robot
+			// there, so the moves will work when checking the neighbor nodes of
+			// minCostNode
+			if (!minCostNode.equals(start) && uncertainty) {
+				move(minCostNode);
+			}
+
+			ArrayList<Node> neighbors = neighborNodes(minCostNode);
+			if (uncertainty)
+				neighbors = neighborNodesUncertain(minCostNode);
+
+			System.out.println(neighbors);
+
 			// Loop through neighboring nodes
-			for (Node neighbor : neighborNodes(minCostNode)) {
-				if (closedList.contains(neighbor))
+			for (Node neighbor : neighbors) {
+				if (closedList.contains(neighbor)) {
 					continue;
+				}
 
-				// double calculatedNeighborCost = getGivenCost(minCostNode)
-				// + minCostNode.point.distance(neighbor.point);
-
-				// Neighbor is potential option to be explored in next loop of
-				// while
 				if (!openList.contains(neighbor)) {
 					neighbor.parent = minCostNode;
 					openList.add(neighbor);
@@ -84,17 +118,231 @@ public class CustomRobot extends Robot {
 		return null;
 	}
 
+	/**
+	 * Move the robot position to the node passed in
+	 * 
+	 * @param destinationNode
+	 *            where the robot needs to move to
+	 */
+	public void move(Node destinationNode) {
+
+		// Get the robot's current position
+		Point current = super.getPosition();
+
+		// Keep making moves until the robot has reached the desired node
+		while (!destinationNode.point.equals(current)) {
+
+			System.out.println(current);
+			System.out.println(destinationNode);
+			// 0 2, 1 6
+			// // Case where robot moves diagonally up left
+			// if ((current.getX() > destinationNode.point.getX())
+			// && current.getY() > destinationNode.point.getY()) {
+			// current = super.move(new Point((int) current.x - 1,
+			// (int) current.y - 1));
+			// }
+			// // Case where robot moves diagonally up right
+			// if ((current.getX() > destinationNode.point.getX())
+			// && current.getY() < destinationNode.point.getY()) {
+			// current = super.move(new Point((int) current.x - 1,
+			// (int) current.y + 1));
+			// }
+			// // Case where robot moves diagonally down left
+			// if ((current.getX() < destinationNode.point.getX())
+			// && current.getY() > destinationNode.point.getY()) {
+			// current = super.move(new Point((int) current.x + 1,
+			// (int) current.y - 1));
+			// }
+			// // Case where robot moves diagonally down right
+			// if ((current.getX() < destinationNode.point.getX())
+			// && current.getY() < destinationNode.point.getY()) {
+			// current = super.move(new Point((int) current.x + 1,
+			// (int) current.y + 1));
+			// }
+
+			// Case where robot moves up, may encounter a wall and need to move
+			// left or right until successful. Use offset to see if it would
+			// be better to go left or right first
+			if (current.getX() > destinationNode.point.getX()) {
+
+				int offset = 0;
+				if (current.getY() < destinationNode.point.getY())
+					offset = 1;
+				else if (current.getY() > destinationNode.point.getY())
+					offset = -1;
+
+				Point temp = new Point((int) (current.x - 1), (int) (current.y));
+				if (super.move(temp).equals(current)) {
+					int increment = offset;
+					if (offset == 0) {
+						increment = 1;
+					}
+					while (super.move(temp).equals(current)) {
+						Point temp2 = new Point(current.x,
+								(int) (temp.y + increment));
+						temp = new Point((int) (current.x - 1),
+								(int) (temp.y + increment));
+
+						if (super.move(temp2) == null) {
+							increment *= -1;
+						} else if (!current.equals(super.move(temp2))) {
+							current = temp2;
+						} else {
+							temp = new Point((int) (current.x - 1),
+									(int) (temp.y + (2 * increment)));
+						}
+					}
+				} else {
+					current = temp;
+				}
+
+			}
+			// Case where robot moves down, may encounter a wall and need to
+			// move left or right until successful. Use offset to see if it
+			// would
+			// be better to go left or right first
+
+			else if (current.getX() < destinationNode.point.getX()) {
+
+				int offset = 0;
+				if (current.getY() < destinationNode.point.getY())
+					offset = 1;
+				else if (current.getY() > destinationNode.point.getY())
+					offset = -1;
+
+				Point oneDown = new Point((int) current.x + 1, current.y);
+				if (super.move(oneDown).equals(current)) {
+					int increment = offset;
+					if (offset == 0)
+						increment = 1;
+					while (super.move(oneDown).equals(current)) {
+						Point temp2 = new Point(current.x,
+								(int) (oneDown.y + increment));
+						oneDown = new Point((int) (current.x + 1),
+								(int) (oneDown.y + increment));
+						if (super.move(temp2) == null) {
+							increment *= -1;
+						} else if (!current.equals(super.move(temp2))) {
+							current = temp2;
+						} else {
+							oneDown = new Point((int) (current.x + 1),
+									(int) (oneDown.y + (increment * 2)));
+						}
+					}
+				} else {
+					current = oneDown;
+				}
+
+			}
+			// Case where robot moves left, may encounter a wall and need to
+			// move up or down until successful. Use offset to see if it would
+			// be better to go up or down first
+			else if (current.getY() > destinationNode.point.getY()) {
+
+				int offset = 0;
+				if (current.getY() < destinationNode.point.getY())
+					offset = 1;
+				else if (current.getY() > destinationNode.point.getY())
+					offset = -1;
+
+				Point temp = new Point((int) (current.x), (int) (current.y - 1));
+				if (super.move(temp).equals(current)) {
+					int increment = offset;
+					if (offset == 0)
+						increment = 1;
+					while (super.move(temp).equals(current)) {
+						Point temp2 = new Point((int) (temp.x + increment),
+								current.y);
+						temp = new Point((int) (temp.x + increment),
+								(int) (current.y - 1));
+
+						if (super.move(temp2) == null) {
+							increment *= -1;
+						} else if (!current.equals(super.move(temp2))) {
+							current = temp2;
+						} else {
+							temp = new Point((int) (temp.x + (2 * increment)),
+									(int) (current.y - 1));
+						}
+					}
+				} else {
+					current = temp;
+				}
+
+			}
+			// Case where robot moves right, may encounter a wall and need to
+			// move up or down until successful. Use offset to see if it would
+			// be better to go up or down first
+
+			else if (current.getY() < destinationNode.point.getY()) {
+
+				int offset = 0;
+				if (current.getX() < destinationNode.point.getX())
+					offset = 1;
+				else if (current.getX() > destinationNode.point.getX())
+					offset = -1;
+
+				Point temp = new Point((int) (current.x), (int) (current.y + 1));
+				if (super.move(temp).equals(current)) {
+					int increment = offset;
+					if (offset == 0)
+						increment = 1;
+					while (super.move(temp).equals(current)) {
+						Point temp2 = new Point((int) (temp.x + increment),
+								current.y);
+						temp = new Point((int) (temp.x + increment),
+								(int) (current.y + 1));
+						if (super.move(temp2) == null) {
+							increment *= -1;
+						} else if (!current.equals(super.move(temp2))) {
+							current = temp2;
+						} else {
+							temp = new Point((int) (temp.x + (2 * increment)),
+									(int) (current.y + 1));
+						}
+					}
+				} else {
+					current = temp;
+				}
+			}
+		}
+	}
+
 	public ArrayList<Node> neighborNodes(Node curr) {
 		ArrayList<Node> adjacent = new ArrayList<Node>();
 		for (int x = -1; x < 2; x++) {
 			for (int y = -1; y < 2; y++) {
 				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
 				Node adjNode = new Node(curr, adjPoint);
+				// Neighbor is valid if it is not the current node and if it is
+				// not in the closed list
 				if (!(x == 0 && y == 0) && !closedList.contains(adjNode)) {
 					String query = super.pingMap(adjPoint);
 					if (query != null
 							&& (query.equals("O") || query.equals("F"))) {
 						adjacent.add(adjNode);
+					}
+				}
+			}
+		}
+		return adjacent;
+	}
+
+	public ArrayList<Node> neighborNodesUncertain(Node curr) {
+		ArrayList<Node> adjacent = new ArrayList<Node>();
+		Point currentPost = super.getPosition();
+		for (int x = -1; x < 2; x++) {
+			for (int y = -1; y < 2; y++) {
+				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
+				// Check that the neighbor is valid by trying to move there
+				if (!super.move(adjPoint).equals(currentPost)
+						&& !(x == 0 && y == 0)) {
+					super.move(currentPost);
+					Node adjNode = new Node(curr, adjPoint);
+					String query = super.pingMap(adjPoint);
+					if (query != null) {
+						adjacent.add(adjNode);
+
 					}
 				}
 			}
@@ -124,8 +372,9 @@ public class CustomRobot extends Robot {
 		return cost;
 	}
 
+	// Multiple by constant because more important if this distance is larger
 	public double getHeuristicCost(Node n) {
-		return n.point.distance(end.point);
+		return n.point.distance(end.point) * 2.3;
 	}
 
 }
