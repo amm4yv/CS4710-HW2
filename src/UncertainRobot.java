@@ -16,10 +16,15 @@ public class UncertainRobot extends Robot {
 	Node end;
 	Node current;
 	boolean uncertainty;
+	boolean probabilityOn;
+	boolean moveRobotOn;
 
-	public UncertainRobot(World world, boolean uncertainty) {
+	public UncertainRobot(World world, boolean uncertainty,
+			boolean probabilityOn, boolean moveRobotOn) {
 		this.world = world;
 		this.uncertainty = uncertainty;
+		this.probabilityOn = probabilityOn;
+		this.moveRobotOn = moveRobotOn;
 
 		this.openList = new ArrayList<Node>();
 		this.closedList = new ArrayList<Node>();
@@ -46,7 +51,7 @@ public class UncertainRobot extends Robot {
 		if (path != null) {
 			path.pop();
 			while (!path.isEmpty()) {
-				super.move(path.pop());
+				System.out.println(super.move(path.pop()));
 			}
 		}
 		// }
@@ -56,10 +61,10 @@ public class UncertainRobot extends Robot {
 
 		while (!openList.isEmpty()) {
 
-//			System.out.println("Open: \t\t" + openList);
-//			System.out.println("Closed: \t" + closedList);
+			// //System.out.println("Open: \t\t" + openList);
+			// //System.out.println("Closed: \t" + closedList);
 
-			// System.out.println("No: " + unmovableList);
+			// ////System.out.println("No: " + unmovableList);
 
 			// Find minimum cost node
 			double minCost = Double.MAX_VALUE;
@@ -68,7 +73,7 @@ public class UncertainRobot extends Robot {
 			if (openList.size() > 1) {
 				for (Node n : openList) {
 					double temp = getGivenCost(n) + getHeuristicCost(n);
-					//System.out.println(n + ": " + temp);
+					// ////System.out.println(n + ": " + temp);
 					if (!n.point.equals(start.point)
 							&& !n.point.equals(super.getPosition())
 							&& temp <= minCost) {
@@ -80,6 +85,8 @@ public class UncertainRobot extends Robot {
 				minCostNode = openList.get(0);
 			}
 
+			// //System.out.println("Min: " + minCostNode);
+
 			// Reached end point, so get path taken
 			if (minCostNode.point.equals(end.point))
 				return reconstructPath(minCostNode);
@@ -87,26 +94,26 @@ public class UncertainRobot extends Robot {
 			openList.remove(minCostNode);
 			closedList.add(minCostNode);
 
-//			Point currentSpot = super.getPosition();
-//			System.out.println("Pos: " + currentSpot);
-//			System.out.println("Min: " + minCostNode);
+			Point currentSpot = super.getPosition();
+			// //System.out.println("Pos: " + currentSpot);
+			// //System.out.println("Min: " + minCostNode);
 
 			// We are trying to go along this path, so need to move the robot
 			// there, so the moves will work when checking the neighbor nodes of
 			// minCostNode
-			if (!minCostNode.equals(start) && uncertainty) {
+			if (!minCostNode.equals(start) && uncertainty && moveRobotOn) {
 				move(minCostNode);
 			}
-			
+
 			current = minCostNode;
-			
-			//System.out.println(super.getPosition());
+
+			// ////System.out.println(super.getPosition());
 
 			ArrayList<Node> neighbors = neighborNodes(minCostNode);
 			if (uncertainty)
 				neighbors = neighborNodesUncertain(minCostNode);
 
-			//System.out.println(neighbors);
+			// ////System.out.println(neighbors);
 
 			// Loop through neighboring nodes
 			for (Node neighbor : neighbors) {
@@ -123,11 +130,6 @@ public class UncertainRobot extends Robot {
 		}
 		return null;
 	}
-	
-
-	
-
-	
 
 	public ArrayList<Node> neighborNodes(Node curr) {
 		ArrayList<Node> adjacent = new ArrayList<Node>();
@@ -135,12 +137,17 @@ public class UncertainRobot extends Robot {
 			for (int y = -1; y < 2; y++) {
 				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
 				Node adjNode = new Node(curr, adjPoint);
+
+				if (adjNode.equals(end)) {
+					adjacent.add(adjNode);
+					break;
+				}
+
 				// Neighbor is valid if it is not the current node and if it is
 				// not in the closed list
 				if (!(x == 0 && y == 0) && !closedList.contains(adjNode)) {
 					String query = super.pingMap(adjPoint);
-					if (query != null
-							&& (query.equals("O") || query.equals("F"))) {
+					if (query != null && (query.equals("O"))) {
 						adjacent.add(adjNode);
 					}
 				}
@@ -151,39 +158,48 @@ public class UncertainRobot extends Robot {
 
 	public ArrayList<Node> neighborNodesUncertain(Node curr) {
 		ArrayList<Node> adjacent = new ArrayList<Node>();
-		
-		//double dist = getHeuristicCost(curr) * 3;
-		
+
+		// double dist = getHeuristicCost(curr) * 3;
+
 		for (int x = -1; x < 2; x++) {
 			for (int y = -1; y < 2; y++) {
 				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
 				Node adjNode = new Node(curr, adjPoint);
-				//System.out.println("("+x+","+y+") " + adjNode);
-				// Neighbor is valid if it is not the current node and if it is
-				// not in the closed list
-				if (!(x == 0 && y == 0) && !closedList.contains(adjNode)) {
-					//System.out.println("("+x+","+y+") " + adjNode);
-					int Os = 0;
-					int Xs = 0;
-					String query = super.pingMap(adjPoint);
-					if (query == null) continue;
-					if (query.equals("F")) {
+				if (adjNode.equals(end)) {
+					adjacent.add(adjNode);
+					continue;
+				}
+				if (moveRobotOn && !probabilityOn) {
+					Point currentPost = super.getPosition();
+					if (!super.move(adjPoint).equals(currentPost)
+							&& !(x == 0 && y == 0)) {
+						super.move(currentPost);
 						adjacent.add(adjNode);
-						continue;
 					}
-					//String finalQuery = super.pingMap(end.point);
-					//if (!finalQuery.equals("F")){
-						for (int i = 0; i < 3; i++) {
-							query = super.pingMap(adjPoint);
-							if (query.equals("O")) Os++;
-							if (query.equals("X")) Xs++;
+				} else {
+					
+					// Neighbor is valid if it is not the current node and if it
+					// is not in the closed list
+					if (!(x == 0 && y == 0) && !closedList.contains(adjNode)) {
+						int Os = 0;
+						int Xs = 0;
+						int iterations = 0;
+						if (moveRobotOn && probabilityOn)
+							iterations = 7;
+						else if (probabilityOn)
+							iterations = 200;
+						for (int i = 0; i < iterations; i++) {
+							String query = super.pingMap(adjPoint);
+							if (query == null)
+								break;
+							if (query.equals("O"))
+								Os++;
+							if (query.equals("X"))
+								Xs++;
 						}
 						if (Os > Xs)
 							adjacent.add(adjNode);
-					//} 
-//					else if (query.equals("O")) {
-//						adjacent.add(adjNode);
-//					}
+					}
 				}
 			}
 		}
@@ -206,7 +222,7 @@ public class UncertainRobot extends Robot {
 	public double getGivenCost(Node n) {
 		double cost = 0;
 		while (n.parent != null) {
-			cost += n.point.distance(n.parent.point);
+			cost += 1;
 			n = n.parent;
 		}
 		return cost;
@@ -214,13 +230,9 @@ public class UncertainRobot extends Robot {
 
 	// Multiple by constant because more important if this distance is larger
 	public double getHeuristicCost(Node n) {
-		return n.point.distance(end.point) * 10.5;
+		return n.point.distance(end.point) * 10;
 	}
-	
-	
-	
-	
-	
+
 	/**
 	 * Move the robot position to the node passed in
 	 * 
@@ -229,16 +241,20 @@ public class UncertainRobot extends Robot {
 	 */
 	public void move(Node destinationNode) {
 
+		// System.out.println("\nOne call of move: ");
+
 		// Get the robot's current position
 		Point current = super.getPosition();
-		
+
 		current = super.move(destinationNode.point);
+
+		Point lastCurrent = current;
 
 		// Keep making moves until the robot has reached the desired node
 		while (!destinationNode.point.equals(current)) {
 
-			//System.out.println("c: " + current);
-			//System.out.println("d: " + destinationNode);
+			// System.out.println("c: " + current);
+			// System.out.println("d: " + destinationNode);
 			// 0 2, 1 6
 			// Case where robot moves diagonally up left
 			if ((current.getX() > destinationNode.point.getX())
@@ -281,7 +297,7 @@ public class UncertainRobot extends Robot {
 				}
 			}
 
-			//System.out.println("c: " + current);
+			// ////System.out.println("c: " + current);
 
 			// Case where robot moves up, may encounter a wall and need to move
 			// left or right until successful. Use offset to see if it would
@@ -293,6 +309,12 @@ public class UncertainRobot extends Robot {
 					offset = 1;
 				else if (current.getY() > destinationNode.point.getY())
 					offset = -1;
+				else {
+					if (current.getY() < lastCurrent.getY())
+						offset = -1;
+					else if (current.getY() > lastCurrent.getY())
+						offset = 1;
+				}
 
 				Point temp = new Point((int) (current.x - 1), (int) (current.y));
 				if (super.move(temp).equals(current)) {
@@ -300,30 +322,39 @@ public class UncertainRobot extends Robot {
 					if (offset == 0) {
 						increment = 1;
 					}
-					while (super.move(temp).equals(current)) {
+
+					Point up = temp;
+					Point diagonal = temp;
+
+					while (super.move(up).equals(current)
+							&& super.move(diagonal).equals(current)) {
 						Point temp2 = new Point(current.x,
 								(int) (current.y + increment));
-						temp = new Point((int) (current.x - 1),
+						diagonal = new Point((int) (current.x - 1),
 								(int) (temp2.y + increment));
 
-//						System.out.println("2: " + temp2);
-//						System.out.println(temp);
-						
+						up = new Point((int) (current.x - 1), (int) (temp2.y));
+
+						// ////System.out.println("2: " + temp2);
+						// ////System.out.println(temp);
+
 						if (super.move(temp2) == null
-								|| super.pingMap(temp2) == null) {
-							
-							temp.y -= increment;
+								|| super.pingMap(temp2) == null
+								|| current.equals(super.move(temp2))) {
+
+							diagonal.y -= increment;
 							increment *= -1;
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							temp.y -= increment;
-//							temp = new Point((int) (current.x - 1),
-//									(int) (temp.y + (2 * increment)));
+							diagonal.y -= increment;
+							// temp = new Point((int) (current.x - 1),
+							// (int) (temp.y + (2 * increment)));
 						}
 					}
 				} else {
 					current = temp;
+					continue;
 				}
 
 			}
@@ -339,32 +370,47 @@ public class UncertainRobot extends Robot {
 					offset = 1;
 				else if (current.getY() > destinationNode.point.getY())
 					offset = -1;
+				else {
+					if (current.getY() < lastCurrent.getY())
+						offset = -1;
+					else if (current.getY() > lastCurrent.getY())
+						offset = 1;
+				}
 
-				Point oneDown = new Point((int) current.x + 1, current.y);
-				if (super.move(oneDown).equals(current)) {
+				Point temp = new Point((int) current.x + 1, current.y);
+				if (super.move(temp).equals(current)) {
 					int increment = offset;
 					if (offset == 0)
 						increment = 1;
-					while (super.move(oneDown).equals(current)) {
+
+					Point down = temp;
+					Point diagonal = temp;
+
+					while (super.move(down).equals(current)
+							&& super.move(diagonal).equals(current)) {
 						Point temp2 = new Point(current.x,
 								(int) (current.y + increment));
-						oneDown = new Point((int) (current.x + 1),
+						diagonal = new Point((int) (current.x + 1),
 								(int) (temp2.y + increment));
+						down = new Point((int) (current.x + 1), (int) (temp2.y));
+
 						if (super.move(temp2) == null
-								|| super.pingMap(temp2) == null) {
-							// System.out.println(temp);
-							oneDown.y -= increment;
+								|| super.pingMap(temp2) == null
+								|| current.equals(super.move(temp2))) {
+							// ////System.out.println(temp);
+							diagonal.y -= increment;
 							increment *= -1;
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							oneDown.y -= increment;
-//							oneDown = new Point((int) (current.x + 1),
-//									(int) (oneDown.y + (increment * 2)));
+							diagonal.y -= increment;
+							// oneDown = new Point((int) (current.x + 1),
+							// (int) (oneDown.y + (increment * 2)));
 						}
 					}
 				} else {
-					current = oneDown;
+					current = temp;
+					continue;
 				}
 
 			}
@@ -378,35 +424,54 @@ public class UncertainRobot extends Robot {
 					offset = 1;
 				else if (current.getX() > destinationNode.point.getX())
 					offset = -1;
+				else {
+					if (current.getX() < lastCurrent.getX())
+						offset = -1;
+					else if (current.getX() > lastCurrent.getX())
+						offset = 1;
+				}
 
 				Point temp = new Point((int) (current.x), (int) (current.y - 1));
+
+				// //System.out.println("temp: " + temp);
 				if (super.move(temp).equals(current)) {
+
 					int increment = offset;
 					if (offset == 0)
 						increment = 1;
-					while (super.move(temp).equals(current)) {
+
+					Point diagonal = temp;
+					Point left = temp;
+
+					while (super.move(left).equals(current)
+							&& super.move(diagonal).equals(current)) {
 						Point temp2 = new Point((int) (current.x + increment),
 								current.y);
-						temp = new Point((int) (temp2.x + increment),
-								(int) (current.y - 1));
 
-						//System.out.println(temp);
-						
+						diagonal = new Point((int) (temp2.x + increment),
+								(int) (current.y - 1));
+						left = new Point((int) (temp2.x), (int) (current.y - 1));
+
+						// ////System.out.println(temp);
+
 						if (super.move(temp2) == null
-								|| super.pingMap(temp2) == null) {
-							
-							temp.x -= increment;
+								|| super.pingMap(temp2) == null
+								|| current.equals(super.move(temp2))) {
+
+							diagonal.x -= increment;
 							increment *= -1;
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							temp.x -= increment;
-//							temp = new Point((int) (temp.x + (2 * increment)),
-//									(int) (current.y - 1));
+							diagonal.x -= increment;
+							// temp = new Point((int) (temp.x + (2 *
+							// increment)),
+							// (int) (current.y - 1));
 						}
 					}
 				} else {
 					current = temp;
+					continue;
 				}
 
 			}
@@ -421,29 +486,44 @@ public class UncertainRobot extends Robot {
 					offset = 1;
 				else if (current.getX() > destinationNode.point.getX())
 					offset = -1;
+				else {
+					if (current.getX() < lastCurrent.getX())
+						offset = -1;
+					else if (current.getX() > lastCurrent.getX())
+						offset = 1;
+				}
 
 				Point temp = new Point((int) (current.x), (int) (current.y + 1));
 				if (super.move(temp).equals(current)) {
 					int increment = offset;
 					if (offset == 0)
 						increment = 1;
-					while (super.move(temp).equals(current)) {
-						// System.out.println(current);
+
+					Point diagonal = temp;
+					Point right = temp;
+
+					while (super.move(diagonal).equals(current)
+							&& super.move(right).equals(current)) {
+						// ////System.out.println(current);
 						Point temp2 = new Point((int) (current.x + increment),
 								current.y);
-						// System.out.println(temp2);
-						temp = new Point((int) (temp2.x + increment),
+						// ////System.out.println(temp2);
+						diagonal = new Point((int) (temp2.x + increment),
 								(int) (current.y + 1));
+						right = new Point((int) (temp2.x),
+								(int) (current.y + 1));
+
 						if (super.move(temp2) == null
-								|| super.pingMap(temp2) == null) {
-							// System.out.println(temp);
-							temp.x -= increment;
+								|| super.pingMap(temp2) == null
+								|| current.equals(super.move(temp2))) {
+							// ////System.out.println(temp);
+							diagonal.x -= increment;
 							increment *= -1;
-							// System.out.println(temp);
+							// ////System.out.println(temp);
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							temp.x -= increment;
+							diagonal.x -= increment;
 							// temp = new Point((int) (temp.x + (2 *
 							// increment)),
 							// (int) (current.y + 1));
@@ -451,9 +531,16 @@ public class UncertainRobot extends Robot {
 					}
 				} else {
 					current = temp;
+					continue;
 				}
 			}
+
+			lastCurrent = current;
+
 		}
+
+		// System.out.println("Final position: " + super.getPosition());
+
 	}
 
 }
