@@ -6,10 +6,10 @@ public class PathFinding {
 		try {
 			boolean uncertainty = true;
 			
-			World myWorld = new World("input3.txt", uncertainty);
+			World myWorld = new World("input2.txt", uncertainty);
 			CustomRobot robot = new CustomRobot(myWorld, uncertainty);
 			robot.addToWorld(myWorld);
-			robot.travelToDestination();
+			//robot.travelToDestination();
 			
 			UncertainRobot ur = new UncertainRobot(myWorld, uncertainty);
 			ur.addToWorld(myWorld);
