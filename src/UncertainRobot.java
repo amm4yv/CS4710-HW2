@@ -173,7 +173,7 @@ public class UncertainRobot extends Robot {
 					}
 					//String finalQuery = super.pingMap(end.point);
 					//if (!finalQuery.equals("F")){
-						for (int i = 0; i < 5; i++) {
+						for (int i = 0; i < 3; i++) {
 							query = super.pingMap(adjPoint);
 							if (query.equals("O")) Os++;
 							if (query.equals("X")) Xs++;
