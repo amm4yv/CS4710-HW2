@@ -4,9 +4,9 @@ public class PathFinding {
 
 	public static void main(String[] args) {
 		try {
-			boolean uncertainty = true;
+			boolean uncertainty = false;
 			
-			World myWorld = new World("input2.txt", uncertainty);
+			World myWorld = new World("input.txt", uncertainty);
 			CustomRobot robot = new CustomRobot(myWorld, uncertainty);
 			robot.addToWorld(myWorld);
 			robot.travelToDestination();

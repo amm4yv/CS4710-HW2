@@ -132,33 +132,51 @@ public class CustomRobot extends Robot {
 		// Keep making moves until the robot has reached the desired node
 		while (!destinationNode.point.equals(current)) {
 
-			System.out.println(current);
-			System.out.println(destinationNode);
+			//System.out.println("c: " + current);
+			//System.out.println("d: " + destinationNode);
 			// 0 2, 1 6
-			// // Case where robot moves diagonally up left
-			// if ((current.getX() > destinationNode.point.getX())
-			// && current.getY() > destinationNode.point.getY()) {
-			// current = super.move(new Point((int) current.x - 1,
-			// (int) current.y - 1));
-			// }
-			// // Case where robot moves diagonally up right
-			// if ((current.getX() > destinationNode.point.getX())
-			// && current.getY() < destinationNode.point.getY()) {
-			// current = super.move(new Point((int) current.x - 1,
-			// (int) current.y + 1));
-			// }
-			// // Case where robot moves diagonally down left
-			// if ((current.getX() < destinationNode.point.getX())
-			// && current.getY() > destinationNode.point.getY()) {
-			// current = super.move(new Point((int) current.x + 1,
-			// (int) current.y - 1));
-			// }
-			// // Case where robot moves diagonally down right
-			// if ((current.getX() < destinationNode.point.getX())
-			// && current.getY() < destinationNode.point.getY()) {
-			// current = super.move(new Point((int) current.x + 1,
-			// (int) current.y + 1));
-			// }
+			// Case where robot moves diagonally up left
+			if ((current.getX() > destinationNode.point.getX())
+					&& current.getY() > destinationNode.point.getY()) {
+				Point toMove = super.move(new Point((int) current.x - 1,
+						(int) current.y - 1));
+				if (!toMove.equals(current)) {
+					current = toMove;
+					continue;
+				}
+			}
+			// Case where robot moves diagonally up right
+			if ((current.getX() > destinationNode.point.getX())
+					&& current.getY() < destinationNode.point.getY()) {
+				Point toMove = super.move(new Point((int) current.x - 1,
+						(int) current.y + 1));
+				if (!toMove.equals(current)) {
+					current = toMove;
+					continue;
+				}
+			}
+			// Case where robot moves diagonally down left
+			if ((current.getX() < destinationNode.point.getX())
+					&& current.getY() > destinationNode.point.getY()) {
+				Point toMove = super.move(new Point((int) current.x + 1,
+						(int) current.y - 1));
+				if (!toMove.equals(current)) {
+					current = toMove;
+					continue;
+				}
+			}
+			// Case where robot moves diagonally down right
+			if ((current.getX() < destinationNode.point.getX())
+					&& current.getY() < destinationNode.point.getY()) {
+				Point toMove = super.move(new Point((int) current.x + 1,
+						(int) current.y + 1));
+				if (!toMove.equals(current)) {
+					current = toMove;
+					continue;
+				}
+			}
+
+			//System.out.println("c: " + current);
 
 			// Case where robot moves up, may encounter a wall and need to move
 			// left or right until successful. Use offset to see if it would
@@ -183,13 +201,17 @@ public class CustomRobot extends Robot {
 						temp = new Point((int) (current.x - 1),
 								(int) (temp.y + increment));
 
-						if (super.move(temp2) == null) {
+						if (super.move(temp2) == null
+								|| super.pingMap(temp2) == null) {
+							// System.out.println(temp);
+							temp.x -= increment;
 							increment *= -1;
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							temp = new Point((int) (current.x - 1),
-									(int) (temp.y + (2 * increment)));
+							temp.x -= increment;
+//							temp = new Point((int) (current.x - 1),
+//									(int) (temp.y + (2 * increment)));
 						}
 					}
 				} else {
@@ -220,13 +242,17 @@ public class CustomRobot extends Robot {
 								(int) (oneDown.y + increment));
 						oneDown = new Point((int) (current.x + 1),
 								(int) (oneDown.y + increment));
-						if (super.move(temp2) == null) {
+						if (super.move(temp2) == null
+								|| super.pingMap(temp2) == null) {
+							// System.out.println(temp);
+							oneDown.x -= increment;
 							increment *= -1;
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							oneDown = new Point((int) (current.x + 1),
-									(int) (oneDown.y + (increment * 2)));
+							oneDown.x -= increment;
+//							oneDown = new Point((int) (current.x + 1),
+//									(int) (oneDown.y + (increment * 2)));
 						}
 					}
 				} else {
@@ -237,12 +263,12 @@ public class CustomRobot extends Robot {
 			// Case where robot moves left, may encounter a wall and need to
 			// move up or down until successful. Use offset to see if it would
 			// be better to go up or down first
-			else if (current.getY() > destinationNode.point.getY()) {
+			if (current.getY() > destinationNode.point.getY()) {
 
 				int offset = 0;
-				if (current.getY() < destinationNode.point.getY())
+				if (current.getX() < destinationNode.point.getX())
 					offset = 1;
-				else if (current.getY() > destinationNode.point.getY())
+				else if (current.getX() > destinationNode.point.getX())
 					offset = -1;
 
 				Point temp = new Point((int) (current.x), (int) (current.y - 1));
@@ -256,13 +282,17 @@ public class CustomRobot extends Robot {
 						temp = new Point((int) (temp.x + increment),
 								(int) (current.y - 1));
 
-						if (super.move(temp2) == null) {
+						if (super.move(temp2) == null
+								|| super.pingMap(temp2) == null) {
+							// System.out.println(temp);
+							temp.x -= increment;
 							increment *= -1;
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							temp = new Point((int) (temp.x + (2 * increment)),
-									(int) (current.y - 1));
+							temp.x -= increment;
+//							temp = new Point((int) (temp.x + (2 * increment)),
+//									(int) (current.y - 1));
 						}
 					}
 				} else {
@@ -288,17 +318,25 @@ public class CustomRobot extends Robot {
 					if (offset == 0)
 						increment = 1;
 					while (super.move(temp).equals(current)) {
+						// System.out.println(current);
 						Point temp2 = new Point((int) (temp.x + increment),
 								current.y);
+						// System.out.println(temp2);
 						temp = new Point((int) (temp.x + increment),
 								(int) (current.y + 1));
-						if (super.move(temp2) == null) {
+						if (super.move(temp2) == null
+								|| super.pingMap(temp2) == null) {
+							// System.out.println(temp);
+							temp.x -= increment;
 							increment *= -1;
+							// System.out.println(temp);
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
-							temp = new Point((int) (temp.x + (2 * increment)),
-									(int) (current.y + 1));
+							temp.x -= increment;
+							// temp = new Point((int) (temp.x + (2 *
+							// increment)),
+							// (int) (current.y + 1));
 						}
 					}
 				} else {
@@ -339,11 +377,11 @@ public class CustomRobot extends Robot {
 						&& !(x == 0 && y == 0)) {
 					super.move(currentPost);
 					Node adjNode = new Node(curr, adjPoint);
-					String query = super.pingMap(adjPoint);
-					if (query != null) {
-						adjacent.add(adjNode);
+					// String query = super.pingMap(adjPoint);
+					// if (query != null) {
+					adjacent.add(adjNode);
 
-					}
+					// }
 				}
 			}
 		}
@@ -374,7 +412,7 @@ public class CustomRobot extends Robot {
 
 	// Multiple by constant because more important if this distance is larger
 	public double getHeuristicCost(Node n) {
-		return n.point.distance(end.point) * 2.3;
+		return n.point.distance(end.point) * 10.5;
 	}
 
 }
