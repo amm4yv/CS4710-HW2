@@ -5,7 +5,7 @@ import java.util.Stack;
 import world.Robot;
 import world.World;
 
-public class CustomRobot extends Robot {
+public class UncertainRobot extends Robot {
 
 	private World world;
 	Point[][] adjMatrix;
@@ -17,7 +17,7 @@ public class CustomRobot extends Robot {
 	Node current;
 	boolean uncertainty;
 
-	public CustomRobot(World world, boolean uncertainty) {
+	public UncertainRobot(World world, boolean uncertainty) {
 		this.world = world;
 		this.uncertainty = uncertainty;
 
@@ -56,10 +56,10 @@ public class CustomRobot extends Robot {
 
 		while (!openList.isEmpty()) {
 
-			//System.out.println("Open: \t\t" + openList);
-			// //System.out.println("Closed: \t" + closedList);
+//			System.out.println("Open: \t\t" + openList);
+//			System.out.println("Closed: \t" + closedList);
 
-			// //System.out.println("No: " + unmovableList);
+			// System.out.println("No: " + unmovableList);
 
 			// Find minimum cost node
 			double minCost = Double.MAX_VALUE;
@@ -87,16 +87,16 @@ public class CustomRobot extends Robot {
 			openList.remove(minCostNode);
 			closedList.add(minCostNode);
 
-			Point currentSpot = super.getPosition();
-			//System.out.println("Pos: " + currentSpot);
-			//System.out.println("Min: " + minCostNode);
+//			Point currentSpot = super.getPosition();
+//			System.out.println("Pos: " + currentSpot);
+//			System.out.println("Min: " + minCostNode);
 
 			// We are trying to go along this path, so need to move the robot
 			// there, so the moves will work when checking the neighbor nodes of
 			// minCostNode
-			if (!minCostNode.equals(start) && uncertainty) {
-				move(minCostNode);
-			}
+//			if (!minCostNode.equals(start) && uncertainty) {
+//				move(minCostNode);
+//			}
 			
 			current = minCostNode;
 			
@@ -124,36 +124,103 @@ public class CustomRobot extends Robot {
 		return null;
 	}
 	
+
 	
+
 	
-	public void move2(Node destination) {
-		
-		if(super.pingMap(destination.point) == null)
-			return;
-		if(!current.point.equals(super.move(destination.point)))
-			return;
-		
-		Node prev = current.parent;
-		while (prev != null) {
-			super.move(prev.point);
-			prev = prev.parent;
+
+	public ArrayList<Node> neighborNodes(Node curr) {
+		ArrayList<Node> adjacent = new ArrayList<Node>();
+		for (int x = -1; x < 2; x++) {
+			for (int y = -1; y < 2; y++) {
+				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
+				Node adjNode = new Node(curr, adjPoint);
+				// Neighbor is valid if it is not the current node and if it is
+				// not in the closed list
+				if (!(x == 0 && y == 0) && !closedList.contains(adjNode)) {
+					String query = super.pingMap(adjPoint);
+					if (query != null
+							&& (query.equals("O") || query.equals("F"))) {
+						adjacent.add(adjNode);
+					}
+				}
+			}
 		}
+		return adjacent;
+	}
+
+	public ArrayList<Node> neighborNodesUncertain(Node curr) {
+		ArrayList<Node> adjacent = new ArrayList<Node>();
 		
+		double dist = getHeuristicCost(curr) * 3;
+		
+		for (int x = -1; x < 2; x++) {
+			for (int y = -1; y < 2; y++) {
+				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
+				Node adjNode = new Node(curr, adjPoint);
+				//System.out.println("("+x+","+y+") " + adjNode);
+				// Neighbor is valid if it is not the current node and if it is
+				// not in the closed list
+				if (!(x == 0 && y == 0) && !closedList.contains(adjNode)) {
+					//System.out.println("("+x+","+y+") " + adjNode);
+					int Os = 0;
+					int Xs = 0;
+					String query = super.pingMap(adjPoint);
+					if (query == null) continue;
+					if (query.equals("F")) {
+						adjacent.add(adjNode);
+						continue;
+					}
+					//String finalQuery = super.pingMap(end.point);
+					//if (!finalQuery.equals("F")){
+						for (int i = 0; i < dist; i++) {
+							query = super.pingMap(adjPoint);
+							if (query.equals("O")) Os++;
+							if (query.equals("X")) Xs++;
+						}
+						if (Os > Xs)
+							adjacent.add(adjNode);
+					//} 
+//					else if (query.equals("O")) {
+//						adjacent.add(adjNode);
+//					}
+				}
+			}
+		}
+		return adjacent;
+	}
+
+	public Stack<Point> reconstructPath(Node goal) {
 		Stack<Point> path = new Stack<Point>();
-		prev = destination.parent;
+		path.push(goal.point);
+
+		Node prev = goal.parent;
 		while (prev != null) {
 			path.push(prev.point);
 			prev = prev.parent;
 		}
-		
-		while (!path.isEmpty()) {
-			super.move(path.pop());
+
+		return path;
+	}
+
+	public double getGivenCost(Node n) {
+		double cost = 0;
+		while (n.parent != null) {
+			cost += n.point.distance(n.parent.point);
+			n = n.parent;
 		}
-		
+		return cost;
+	}
+
+	// Multiple by constant because more important if this distance is larger
+	public double getHeuristicCost(Node n) {
+		return n.point.distance(end.point) * 10.5;
 	}
 	
 	
-
+	
+	
+	
 	/**
 	 * Move the robot position to the node passed in
 	 * 
@@ -214,7 +281,7 @@ public class CustomRobot extends Robot {
 				}
 			}
 
-			////System.out.println("c: " + current);
+			//System.out.println("c: " + current);
 
 			// Case where robot moves up, may encounter a wall and need to move
 			// left or right until successful. Use offset to see if it would
@@ -239,8 +306,8 @@ public class CustomRobot extends Robot {
 						temp = new Point((int) (current.x - 1),
 								(int) (temp2.y + increment));
 
-						//System.out.println("2: " + temp2);
-						//System.out.println(temp);
+//						System.out.println("2: " + temp2);
+//						System.out.println(temp);
 						
 						if (super.move(temp2) == null
 								|| super.pingMap(temp2) == null) {
@@ -285,7 +352,7 @@ public class CustomRobot extends Robot {
 								(int) (temp2.y + increment));
 						if (super.move(temp2) == null
 								|| super.pingMap(temp2) == null) {
-							// //System.out.println(temp);
+							// System.out.println(temp);
 							oneDown.y -= increment;
 							increment *= -1;
 						} else if (!current.equals(super.move(temp2))) {
@@ -323,7 +390,7 @@ public class CustomRobot extends Robot {
 						temp = new Point((int) (temp2.x + increment),
 								(int) (current.y - 1));
 
-						////System.out.println(temp);
+						//System.out.println(temp);
 						
 						if (super.move(temp2) == null
 								|| super.pingMap(temp2) == null) {
@@ -361,18 +428,18 @@ public class CustomRobot extends Robot {
 					if (offset == 0)
 						increment = 1;
 					while (super.move(temp).equals(current)) {
-						// //System.out.println(current);
+						// System.out.println(current);
 						Point temp2 = new Point((int) (current.x + increment),
 								current.y);
-						// //System.out.println(temp2);
+						// System.out.println(temp2);
 						temp = new Point((int) (temp2.x + increment),
 								(int) (current.y + 1));
 						if (super.move(temp2) == null
 								|| super.pingMap(temp2) == null) {
-							// //System.out.println(temp);
+							// System.out.println(temp);
 							temp.x -= increment;
 							increment *= -1;
-							// //System.out.println(temp);
+							// System.out.println(temp);
 						} else if (!current.equals(super.move(temp2))) {
 							current = temp2;
 						} else {
@@ -387,75 +454,6 @@ public class CustomRobot extends Robot {
 				}
 			}
 		}
-	}
-
-	public ArrayList<Node> neighborNodes(Node curr) {
-		ArrayList<Node> adjacent = new ArrayList<Node>();
-		for (int x = -1; x < 2; x++) {
-			for (int y = -1; y < 2; y++) {
-				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
-				Node adjNode = new Node(curr, adjPoint);
-				// Neighbor is valid if it is not the current node and if it is
-				// not in the closed list
-				if (!(x == 0 && y == 0) && !closedList.contains(adjNode)) {
-					String query = super.pingMap(adjPoint);
-					if (query != null
-							&& (query.equals("O") || query.equals("F"))) {
-						adjacent.add(adjNode);
-					}
-				}
-			}
-		}
-		return adjacent;
-	}
-
-	public ArrayList<Node> neighborNodesUncertain(Node curr) {
-		ArrayList<Node> adjacent = new ArrayList<Node>();
-		Point currentPost = super.getPosition();
-		for (int x = -1; x < 2; x++) {
-			for (int y = -1; y < 2; y++) {
-				Point adjPoint = new Point(curr.point.x + x, curr.point.y + y);
-				// Check that the neighbor is valid by trying to move there
-				if (!super.move(adjPoint).equals(currentPost)
-						&& !(x == 0 && y == 0)) {
-					super.move(currentPost);
-					Node adjNode = new Node(curr, adjPoint);
-					// String query = super.pingMap(adjPoint);
-					// if (query != null) {
-					adjacent.add(adjNode);
-
-					// }
-				}
-			}
-		}
-		return adjacent;
-	}
-
-	public Stack<Point> reconstructPath(Node goal) {
-		Stack<Point> path = new Stack<Point>();
-		path.push(goal.point);
-
-		Node prev = goal.parent;
-		while (prev != null) {
-			path.push(prev.point);
-			prev = prev.parent;
-		}
-
-		return path;
-	}
-
-	public double getGivenCost(Node n) {
-		double cost = 0;
-		while (n.parent != null) {
-			cost += n.point.distance(n.parent.point);
-			n = n.parent;
-		}
-		return cost;
-	}
-
-	// Multiple by constant because more important if this distance is larger
-	public double getHeuristicCost(Node n) {
-		return n.point.distance(end.point) * 10.5;
 	}
 
 }
